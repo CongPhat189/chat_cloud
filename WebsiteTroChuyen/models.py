@@ -2,7 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from sqlalchemy.dialects.mysql import JSON
 
-from WebsiteTroChuyen import db, app
+from __init__ import db, app
 
 
 
@@ -12,10 +12,12 @@ class User(db.Model):
 
     user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     phone = db.Column(db.String(20), unique=True, nullable=False)
+    email = db.Column(db.String(255), nullable=False, unique=True)
     username = db.Column(db.String(100), nullable=False)
     password = db.Column(db.String(255), nullable=False)
     birthdate = db.Column(db.Date, nullable=True)
     avatar = db.Column(db.String(255), nullable=True)
+    role = db.Column(db.Enum("user", "admin"), default="user")
 
     # Quan hệ
     sent_messages = db.relationship("Message", backref="sender", lazy=True)
