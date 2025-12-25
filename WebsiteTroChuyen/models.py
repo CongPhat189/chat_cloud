@@ -32,12 +32,30 @@ class Friend(db.Model):
     friend_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     user_id1 = db.Column(db.Integer, db.ForeignKey("users.user_id"), nullable=False)
     user_id2 = db.Column(db.Integer, db.ForeignKey("users.user_id"), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey("users.user_id"), nullable=False)
     status = db.Column(db.Enum("pending", "accepted", "blocked"), default="pending")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
+class Message(db.Model):
+    __tablename__ = "messages"
+
+    message_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    conversation_id = db.Column(
+        db.Integer, db.ForeignKey("conversations.conversation_id"), nullable=False
+    )
+    sender_id = db.Column(
+        db.Integer, db.ForeignKey("users.user_id"), nullable=False
+    )
+    content = db.Column(db.Text, nullable=True)
+    type = db.Column(db.Enum("text", "image", "file"), default="text")
+    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
+    read_by = db.Column(JSON, nullable=True)  # MySQL JSON
+
+    # Quan hệ file
+    files = db.relationship("File", backref="message", lazy=True)
 
 class Conversation(db.Model):
     __tablename__ = "conversations"
@@ -67,23 +85,7 @@ class Participant(db.Model):
     user = db.relationship("User")
 
 
-class Message(db.Model):
-    __tablename__ = "messages"
 
-    message_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    conversation_id = db.Column(
-        db.Integer, db.ForeignKey("conversations.conversation_id"), nullable=False
-    )
-    sender_id = db.Column(
-        db.Integer, db.ForeignKey("users.user_id"), nullable=False
-    )
-    content = db.Column(db.Text, nullable=True)
-    type = db.Column(db.Enum("text", "image", "file"), default="text")
-    sent_at = db.Column(db.DateTime, default=datetime.utcnow)
-    read_by = db.Column(JSON, nullable=True)  # MySQL JSON
-
-    # Quan hệ file
-    files = db.relationship("File", backref="message", lazy=True)
 
 
 class File(db.Model):
@@ -100,6 +102,7 @@ class File(db.Model):
 
     def __repr__(self):
         return f"<File {self.file_name}>"
+
 if __name__=='__main__':
     with app.app_context():
 

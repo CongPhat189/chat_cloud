@@ -1,0 +1,493 @@
+* {
+  box-sizing: border-box;
+}
+.html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.layout {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+}
+
+.left {
+  width: calc(100% * 3 / 10);
+  display: flex;
+}
+
+/* THANH XANH */
+.left-bar {
+  width: 66px;
+  background-color: #005ae0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+}
+.left-content {
+  flex: 1;
+  min-width: 0;
+  background-color: #fff;
+}
+
+/* vị trí */
+.bar-top {
+  margin-bottom: 12px;
+}
+
+/* AVATAR IMG */
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  object-fit: cover;
+}
+
+/* ICON FALLBACK */
+.avatar-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #fff;
+  font-size: 18px;
+}
+
+.bar-middle {
+  margin-top: 2px; /* sát avatar hơn */
+  padding:10px;
+}
+
+.bar-bottom {
+  margin-top: auto;
+}
+
+
+/* ICON */
+.bar-icon {
+  color: #fff;                /* 👈 icon trắng */
+  font-size: 28px;
+  padding: 10px;
+  border-radius: 8px;         /* vuông bo nhẹ */
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+/* hover: nền đen/xám nhẹ */
+.bar-icon:hover {
+  background-color: rgba(0, 0, 0, 0.15);
+}
+/* SEARCH BAR */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding:10px;
+}
+
+/* ô search */
+.search-box {
+  flex: 1;
+  background-color: #e9e9e9;
+  border-radius: 5px;
+  padding: 8px 12px;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-box i {
+  color: #666;
+  font-size: 14px;
+}
+
+.search-box input {
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 100%;
+  font-size: 14px;
+}
+.clear-search {
+  display: none;
+  position: absolute;
+  right: 10px;
+  cursor: pointer;
+  font-size: 16px;
+  color: #666;
+}
+
+.clear-search:hover {
+  color: #000;
+}
+
+/* icon add user */
+.add-user {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+/* IMG ICON – không nền */
+.add-user img {
+  width: 25px;
+  height: 25px;
+  object-fit: contain;
+}
+
+/* hover */
+.add-user:hover {
+  background-color: rgba(0, 0, 0, 0.15);
+
+}
+
+/* BÊN PHẢI 7/7 */
+.right {
+  width: calc(100% * 7.5 / 10);
+  background-color: #e0e0e0;
+  display: flex;
+  padding: 0;            /* 👈 bỏ */
+  overflow: hidde
+
+  overflow-y: auto;       /* vẫn scroll */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.right::-webkit-scrollbar {
+  display: none;
+}
+
+                                /* ----------------------------------
+                                   Phần user bên khung bên trái
+                                ---------------------------------- */
+
+.user-item {
+  display: flex;
+  flex-direction: row;   /* 👈 ÉP NẰM NGANG */
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.user-item:hover {
+  background-color: #f5f7fb;
+  cursor:pointer;
+}
+
+/* AVATAR */
+.user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: #e5e7eb;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-avatar i {
+  font-size: 18px;
+  color: #9ca3af;
+}
+
+/* INFO */
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111;
+}
+
+.user-phone {
+  font-size: 14px;
+  color: #111;
+  margin-top: 2px;
+  font-weight: 400;
+}
+
+.phone-number {
+  color: #005ae0; /* xanh biển */
+  font-weight: 500;
+}
+
+                                /* ----------------------------------
+                                            Phần bên phải
+                                ---------------------------------- */
+
+ /* Container chat bên phải */
+.chat-right {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8f8f8;
+  border-left: 1px solid #ddd;
+  width:100%;
+}
+
+/* HEADER */
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #fff;
+  border-bottom: 1px solid #ddd;
+}
+
+.chat-header-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-header-avatar img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.chat-header-name {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.chat-header-actions i {
+  margin-left: 12px;
+  cursor: pointer;
+  color: #666666;
+}
+
+/*Phần add fiend*/
+.friend-request-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  background-color: #fff;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+
+  font-size: 14px;
+}
+
+/* BÊN TRÁI */
+.friend-request-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #111;
+}
+
+.friend-request-left img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+/* BÊN PHẢI */
+.friend-request-right {
+  background-color: #e5e7eb;
+  color: #111;
+  padding: 6px 14px;
+  border-radius: 3px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.friend-request-right:hover {
+  background-color: #d1d5db;
+}
+
+
+/* MESSAGES AREA */
+.chat-messages {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  scrollbar-width:none;
+}
+
+.message {
+  display: flex;
+  align-items: flex-end;
+  max-width: 70%;
+}
+
+.message-avatar img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.message-content {
+  background-color: #fff;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Tin nhắn gửi */
+.message-send {
+  align-self: flex-end;
+}
+
+.message-send .message-content {
+  background-color: #005ae0;
+  color: #fff;
+}
+
+/* Tin nhắn nhận */
+.message-receive {
+  align-self: flex-start;
+}
+
+.message-receive .message-content {
+  background-color: #e5e5ea;
+  color: #111;
+}
+
+/* INPUT AREA */
+.chat-input-area {
+  background-color: #fff;
+  border-top: 1px solid #ddd;     /* gạch trên */
+  border-bottom: 1px solid #ddd;  /* gạch dưới */
+}
+
+/* TOOLBAR */
+.chat-input-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 16px;
+  color: #666;
+}
+
+.chat-input-toolbar i {
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.chat-input-toolbar i:hover {
+  color: #005ae0;
+}
+
+/* GẠCH NGĂN GIỮA */
+.chat-input-divider {
+  height: 1px;
+  background-color: #e5e5e5;
+  margin: 0 16px;   /* 👈 thụt vào giống Zalo */
+}
+
+/* INPUT */
+.chat-input-box {
+  padding: 8px 16px;
+}
+
+.chat-input-box input {
+  width: 100%;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  padding: 8px 0;
+}
+
+
+/* PHẦN KHUNG LIST-CHAT*/
+.chat-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.chat-item:hover {
+  background: #f2f2f2;
+}
+
+.chat-avatar img {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.chat-info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.chat-name {
+  font-weight: 600;
+}
+
+.chat-last {
+  font-size: 13px;
+  color: #777;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* PHẦN KẾT BẠN */
+.friend-request-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.friend-request-accept {
+  background-color: #e5e7eb;
+  color: #111;
+  padding: 6px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.friend-request-cancel {
+  background-color: #e5e7eb;
+  color: #111;
+  padding: 6px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-weight: 500;
+}
