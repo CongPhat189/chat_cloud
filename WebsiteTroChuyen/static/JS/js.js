@@ -183,6 +183,7 @@ document.addEventListener("DOMContentLoaded", function () {
       `<div class="message message-receive">
         <div class="message-content">Đang tải cuộc trò chuyện...</div>
       </div>`;
+    loadFriendStatus(user.user_id);
 
     fetch("/api/conversations/private", {
       method: "POST",
