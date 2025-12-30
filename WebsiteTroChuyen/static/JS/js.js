@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", function () {
   let currentChatUserId = null;
   let currentConversationId = null;
   let selectedImages = [];
+  let selectedFiles = [];
 
   const searchInput = document.querySelector(".search-box input");
   const clearBtn = document.querySelector(".clear-search");
@@ -15,6 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const input = document.getElementById("chat-input-field");
   const messageBox = document.getElementById("chat-messages");
+  const previewContainer = document.querySelector(".image-preview-container");
 
   // =======================
   // SEND MESSAGE (ENTER)
@@ -24,67 +26,273 @@ document.addEventListener("DOMContentLoaded", function () {
       e.preventDefault();
 
       const text = input.value.trim();
-      if ((!text && selectedImages.length === 0) || !currentConversationId) return;
+      if (
+          !currentConversationId ||
+          (!text && selectedImages.length === 0 && selectedFiles.length === 0)
+        ) return;
 
       sendMessage(text);
       input.value = "";
     }
   });
 
-  function sendMessage(text) {
+function sendMessage(text) {
+  const tempId = "tmp_" + Date.now();
+
+    // IMAGE PREVIEW
+    if (selectedImages.length > 0) {
+      const tempUrls = selectedImages.map(f => URL.createObjectURL(f));
+      appendMyMessage(tempUrls, true, tempId, "image");
+    }
+
+    // FILE PREVIEW
+    if (selectedFiles.length > 0) {
+      appendMyMessage(
+        selectedFiles.map(f => ({ name: f.name })),
+        false,
+        tempId,
+        "file"
+      );
+    }
+
+    // TEXT
+    if (selectedImages.length === 0 && selectedFiles.length === 0) {
+      appendMyMessage(text, false, tempId, "text");
+    }
+
     const formData = new FormData();
     formData.append("conversation_id", currentConversationId);
-    formData.append("content", text);
 
-    selectedImages.forEach(img => {
-      formData.append("images", img);
+    // ƯU TIÊN FILE → IMAGE → TEXT
+    if (selectedFiles.length > 0) {
+      formData.append("type", "file");
+      selectedFiles.forEach(f => formData.append("files", f));
+    }
+    else if (selectedImages.length > 0) {
+      formData.append("type", "image");
+      selectedImages.forEach(img => formData.append("images", img));
+    }
+    else {
+      formData.append("type", "text");
+      formData.append("content", text);
+    }
+
+  selectedImages = [];
+  document.querySelectorAll(".image-preview").forEach(e => e.remove());
+
+  fetch("/api/send-message", {
+    method: "POST",
+    body: formData
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.type === "image") {
+        replaceTempImages(tempId, data.content);
+      }
+      else if (data.type === "file") {
+        replaceTempFiles(tempId, data.content);
+       }
+       else {
+        replaceTempText(tempId, data.content);
+      }
+        selectedFiles = [];
+        selectedImages = [];
+        previewContainer.innerHTML = "";
+        })
+    .catch(console.error);
+}
+
+function replaceTempImages(tempId, realUrls) {
+  const msg = document.querySelector(`[data-temp-id="${tempId}"]`);
+  if (!msg) return;
+
+  const imgs = msg.querySelectorAll("img");
+  imgs.forEach((img, i) => {
+    img.src = realUrls[i];
+    img.parentElement.classList.remove("loading");
+  });
+}
+
+function replaceTempText(tempId, text) {
+  const msg = document.querySelector(`[data-temp-id="${tempId}"]`);
+  if (!msg) return;
+
+  const content = msg.querySelector(".message-content");
+  content.textContent = text;
+
+  msg.removeAttribute("data-temp-id");
+}
+
+function replaceTempFiles(tempId, realFiles) {
+  const msg = document.querySelector(`[data-temp-id="${tempId}"]`);
+  if (!msg) return;
+
+  const container = msg.querySelector(".message-files");
+  if (!container) return;
+
+  container.innerHTML = realFiles.map(f => `
+    <div class="file-wrapper" style="position: relative; display: inline-block;">
+      <a href="${f.url}" target="_blank" class="file-item">
+        <div class="file-icon">
+          <img src="https://cdn-icons-png.flaticon.com/128/4726/4726038.png">
+        </div>
+        <div class="file-info">
+          <div class="file-name" title="${f.name}">${f.name}</div>
+          <div class="file-meta">
+            <img src="https://cdn-icons-png.flaticon.com/128/3385/3385353.png" title="Đã có trên Cloud">
+            <span>Đã có trên Cloud</span>
+          </div>
+        </div>
+      </a>
+      <!-- Ô vuông trắng bên phải -->
+      <div class="file-action-box">
+        <img src="https://cdn-icons-png.flaticon.com/128/3502/3502477.png" alt="Action">
+      </div>
+    </div>
+  `).join("");
+}
+
+
+
+
+
+function appendMyMessage(content, isLoading = false, tempId = null, type = "text") {
+  const div = document.createElement("div");
+  div.className = "message message-send";
+  if (tempId) div.dataset.tempId = tempId;
+
+  let html = "";
+
+  // ===== IMAGE =====
+  if (type === "image" && Array.isArray(content)) {
+    html += `<div class="message-images">`;
+    content.forEach(url => {
+      html += `
+        <div class="image-wrap ${isLoading ? "loading" : ""}">
+          <img src="${url}" class="chat-image">
+        </div>
+      `;
     });
+    html += `</div>`;
+  }
 
-    fetch("/api/send-message", {
-      method: "POST",
-      body: formData
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) {
-          alert(data.error);
-          return;
+  // ===== FILE =====
+else if (type === "file" && Array.isArray(content)) {
+  html += `<div class="message-files">`;
+
+  content.forEach(f => {
+    html += `
+      <div class="file-wrapper" style="position: relative; display: inline-block;">
+        <a href="${f.url}" target="_blank" class="file-item">
+          <div class="file-icon">
+            <img src="https://cdn-icons-png.flaticon.com/128/4726/4726038.png">
+          </div>
+          <div class="file-info">
+            <div class="file-name" title="${f.name}">${f.name}</div>
+            <div class="file-meta">
+              <img src="https://cdn-icons-png.flaticon.com/128/3385/3385353.png" title="Đã có trên Cloud">
+              <span>Đã có trên Cloud</span>
+            </div>
+          </div>
+        </a>
+        <!-- Ô vuông trắng bên phải -->
+        <div class="file-action-box">
+          <img src="https://cdn-icons-png.flaticon.com/128/3502/3502477.png" alt="Action">
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+}
+
+
+
+
+
+  // ===== TEXT =====
+  else {
+    html += `<div class="message-content">${content}</div>`;
+  }
+
+  div.innerHTML = html;
+  messageBox.appendChild(div);
+  messageBox.scrollTop = messageBox.scrollHeight;
+}
+
+
+
+
+function loadMessages(conversationId) {
+  fetch(`/api/messages/${conversationId}`)
+    .then(res => res.json())
+    .then(messages => {
+      messageBox.innerHTML = "";
+
+      messages.forEach(m => {
+        const div = document.createElement("div");
+        div.className =
+          m.sender_id == ME_USER_ID
+            ? "message message-send"
+            : "message message-receive";
+
+        let html = "";
+
+        // TEXT
+        if (m.type === "text" && m.content) {
+          html += `<div class="message-content">${m.content}</div>`;
         }
 
-        selectedImages = [];
-        document.querySelectorAll(".image-preview").forEach(e => e.remove());
+        // IMAGE
+        if (m.type === "image" && Array.isArray(m.content)) {
+          html += `<div class="message-images">`;
+          m.content.forEach(url => {
+            html += `<img src="${url}" class="chat-image">`;
+          });
+          html += `</div>`;
+        }
+        // FILE
+if (m.type === "file" && Array.isArray(m.content)) {
+  html += `<div class="message-files">`;
 
-        appendMyMessage(data.content);
+  m.content.forEach(f => {
+    html += `
+      <div class="file-wrapper" style="position: relative; display: inline-block;">
+        <a href="${f.url}" target="_blank" class="file-item">
+          <div class="file-icon">
+            <img src="https://cdn-icons-png.flaticon.com/128/4726/4726038.png">
+          </div>
+          <div class="file-info">
+            <div class="file-name" title="${f.name}">${f.name}</div>
+            <div class="file-meta">
+              <img src="https://cdn-icons-png.flaticon.com/128/3385/3385353.png" title="Đã có trên Cloud">
+              <span>Đã có trên Cloud</span>
+            </div>
+          </div>
+        </a>
+        <!-- Ô vuông trắng bên phải -->
+        <div class="file-action-box">
+          <img src="https://cdn-icons-png.flaticon.com/128/3502/3502477.png" alt="Action">
+        </div>
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+}
+
+
+
+
+
+        div.innerHTML = html;
+        messageBox.appendChild(div);
       });
-  }
 
-  function appendMyMessage(text) {
-    const div = document.createElement("div");
-    div.className = "message message-send";
-    div.innerHTML = `<div class="message-content">${text}</div>`;
-    messageBox.appendChild(div);
-    messageBox.scrollTop = messageBox.scrollHeight;
-  }
+      messageBox.scrollTop = messageBox.scrollHeight;
+    });
+}
 
-  function loadMessages(conversationId) {
-    fetch(`/api/messages/${conversationId}`)
-      .then(res => res.json())
-      .then(messages => {
-        messageBox.innerHTML = "";
-        messages.forEach(m => {
-          const div = document.createElement("div");
-          div.className =
-            m.sender_id == ME_USER_ID
-              ? "message message-send"
-              : "message message-receive";
-
-          div.innerHTML = `<div class="message-content">${m.content}</div>`;
-          messageBox.appendChild(div);
-        });
-
-        messageBox.scrollTop = messageBox.scrollHeight;
-      });
-  }
 
   // =======================
   // SEARCH USER
@@ -163,9 +371,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  // =====================
-  // OPEN CHAT (CORE)
-  // =====================
+
 
   // =====================
   // OPEN CHAT
@@ -183,6 +389,7 @@ document.addEventListener("DOMContentLoaded", function () {
       `<div class="message message-receive">
         <div class="message-content">Đang tải cuộc trò chuyện...</div>
       </div>`;
+        loadFriendStatus(user.user_id);
 
     fetch("/api/conversations/private", {
       method: "POST",
@@ -226,9 +433,27 @@ document.addEventListener("DOMContentLoaded", function () {
               </div>
               <div class="chat-info">
                 <div class="chat-name">${u.username}</div>
-                <div class="chat-last">
-                  ${u.last_message || "Chưa có tin nhắn"}
-                </div>
+                    <div class="chat-last">
+                      ${
+                        u.last_message_type === "image"
+                          ? `
+                            <span class="chat-last-image">
+                              <span>Đã gửi:</span>
+                              <img src="https://cdn-icons-png.flaticon.com/128/739/739249.png">
+                              <span>Hình ảnh</span>
+                            </span>
+                          `
+                          : u.last_message_type === "file"
+                            ? `
+                              <span class="chat-last-image">
+                                <span>Đã gửi:</span>
+                                <img src="https://cdn-icons-png.flaticon.com/128/8138/8138518.png">
+                                <span>Tệp tin</span>
+                              </span>
+                            `
+                            : (u.last_message || "Chưa có tin nhắn")
+                      }
+                    </div>
               </div>
             </div>`;
         });
@@ -348,25 +573,89 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // =====================
-  // FILE / IMAGE PICK
-  // =====================
+// =====================
+// IMAGE PICK
+// =====================
+const imageInput = document.createElement("input");
+imageInput.type = "file";
+imageInput.accept = "image/*";
+imageInput.multiple = true;
+imageInput.style.display = "none";
+document.body.appendChild(imageInput);
 
-["image", "file"].forEach(type => {
-    const inputFile = document.createElement("input");
-    inputFile.type = "file";
-    if (type === "image") inputFile.accept = "image/*";
-    inputFile.style.display = "none";
-    document.body.appendChild(inputFile);
+document.querySelector(".open-image")
+  ?.addEventListener("click", () => imageInput.click());
 
-    document.querySelector(`.open-${type}`)?.addEventListener("click", () => inputFile.click());
+imageInput.addEventListener("change", () => {
+  const files = Array.from(imageInput.files);
 
-    inputFile.addEventListener("change", () => {
-      if (inputFile.files[0]) {
-        console.log(`${type} selected:`, inputFile.files[0]);
-        inputFile.value = "";
-      }
-    });
-  });
+  for (let file of files) {
+    if (selectedImages.length >= 3) {
+      alert("Chỉ được chọn tối đa 3 ảnh");
+      break;
+    }
+
+    selectedImages.push(file);
+
+    const div = document.createElement("div");
+    div.className = "image-preview";
+    div.innerHTML = `
+      <img src="${URL.createObjectURL(file)}">
+      <span>&times;</span>
+    `;
+
+    div.querySelector("span").onclick = () => {
+      selectedImages = selectedImages.filter(f => f !== file);
+      div.remove();
+    };
+
+    previewContainer.appendChild(div);
+  }
+
+  imageInput.value = "";
+});
+
+// =====================
+// FILE PICK
+// =====================
+const fileInput = document.createElement("input");
+fileInput.type = "file";
+fileInput.multiple = true;
+fileInput.style.display = "none";
+document.body.appendChild(fileInput);
+
+document.querySelector(".open-file")
+  ?.addEventListener("click", () => fileInput.click());
+
+fileInput.addEventListener("change", () => {
+  const files = Array.from(fileInput.files);
+
+  for (let file of files) {
+    if (selectedFiles.length >= 3) {
+      alert("Chỉ được chọn tối đa 3 file");
+      break;
+    }
+
+    selectedFiles.push(file);
+
+    const div = document.createElement("div");
+    div.className = "file-preview";
+    div.innerHTML = `
+      <i class="fa-solid fa-file"></i>
+      <span class="file-name">${file.name}</span>
+      <span class="remove-file">&times;</span>
+    `;
+
+    div.querySelector(".remove-file").onclick = () => {
+      selectedFiles = selectedFiles.filter(f => f !== file);
+      div.remove();
+    };
+
+    previewContainer.appendChild(div);
+  }
+
+  fileInput.value = "";
+});
+
 
 });

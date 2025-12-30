@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from flask_mail import Mail, Message as MailMessage
 
 from dao import *
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import random, uuid, os
 
 
@@ -509,7 +509,15 @@ def api_chat_list():
             "username": other_user.username,
             "avatar": other_user.avatar,
             "friend_status": f.status,
-            "last_message": last_msg.content if last_msg else "",
+
+            "last_message": (
+                "Hình ảnh" if last_msg and last_msg.type == "image"
+                else last_msg.content if last_msg
+                else ""
+            ),
+
+            "last_message_type": last_msg.type if last_msg else None,
+
             "last_timestamp": last_msg.sent_at.timestamp() if last_msg else 0
         })
 
@@ -531,40 +539,94 @@ def get_user(user_id):
         "avatar": user.avatar
     })
 
+
 @app.route("/api/send-message", methods=["POST"])
 def send_message():
     if "user_id" not in session:
         return jsonify({"error": "unauthorized"}), 401
 
     conversation_id = request.form.get("conversation_id", type=int)
+    msg_type = request.form.get("type", "text")
     content = request.form.get("content", "").strip()
 
-    if not conversation_id or not content:
-        return jsonify({"error": "missing data"}), 400
+    images = request.files.getlist("images")
+    files = request.files.getlist("files")
+
+    if not conversation_id:
+        return jsonify({"error": "missing conversation"}), 400
 
     convo = db.session.get(Conversation, conversation_id)
     if not convo:
         return jsonify({"error": "conversation not found"}), 404
 
+    stored_content = None
+
+    # =====================
+    # IMAGE
+    # =====================
+    if msg_type == "image" and images:
+        image_urls = []
+
+        for img in images[:3]:
+            result = cloudinary.uploader.upload(
+                img,
+                folder="chat_images"
+            )
+            image_urls.append(result["secure_url"])
+
+        stored_content = json.dumps(image_urls)
+
+    # =====================
+    # FILE
+    # =====================
+    elif msg_type == "file" and files:
+        file_infos = []
+
+        for f in files[:3]:
+            result = cloudinary.uploader.upload(
+                f,
+                resource_type="raw",  # ⭐ BẮT BUỘC CHO FILE
+                folder="chat_files"
+            )
+
+            file_infos.append({
+                "name": f.filename,
+                "url": result["secure_url"]
+            })
+
+        stored_content = json.dumps(file_infos)
+
+    # =====================
+    # TEXT
+    # =====================
+    else:
+        msg_type = "text"
+        stored_content = content
+
+    # =====================
+    # SAVE DB
+    # =====================
     msg = Message(
         conversation_id=conversation_id,
         sender_id=session["user_id"],
-        content=content,
-        type="text"
+        type=msg_type,
+        content=stored_content
     )
 
     db.session.add(msg)
-    convo.last_message_at = datetime.utcnow()
+    convo.last_message_at = datetime.now(UTC)
     db.session.commit()
 
     return jsonify({
-        "message_id": msg.message_id,
         "sender_id": msg.sender_id,
-        "content": msg.content,
+        "type": msg.type,
+        "content": json.loads(msg.content) if msg.type != "text" else msg.content,
         "sent_at": msg.sent_at.isoformat()
     })
 
 
+
+import json
 @app.route("/api/messages/<int:conversation_id>")
 def get_messages(conversation_id):
     msgs = (
@@ -577,9 +639,15 @@ def get_messages(conversation_id):
     return jsonify([
         {
             "sender_id": m.sender_id,
-            "content": m.content,
+            "type": m.type,
+            "content": (
+                json.loads(m.content)
+                if m.type in ["image", "file"]
+                else m.content
+            ),
             "sent_at": m.sent_at.isoformat()
-        } for m in msgs
+        }
+        for m in msgs
     ])
 
 
@@ -629,22 +697,7 @@ def get_or_create_private_conversation():
 
 
 
-# @app.route("/api/messages/<int:conversation_id>")
-# def get_messages(conversation_id):
-#     msgs = (
-#         Message.query
-#         .filter_by(conversation_id=conversation_id)
-#         .order_by(Message.sent_at)
-#         .all()
-#     )
-#
-#     return jsonify([
-#         {
-#             "sender_id": m.sender_id,
-#             "content": m.content,
-#             "sent_at": m.sent_at.isoformat()
-#         } for m in msgs
-#     ])
+
 
 if __name__ == "__main__":
     from __init__ import socketio

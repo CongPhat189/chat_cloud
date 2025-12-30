@@ -50,7 +50,10 @@ class Message(db.Model):
         db.Integer, db.ForeignKey("users.user_id"), nullable=False
     )
     content = db.Column(db.Text, nullable=True)
+
+
     type = db.Column(db.Enum("text", "image", "file"), default="text")
+
     sent_at = db.Column(db.DateTime, default=datetime.utcnow)
     read_by = db.Column(JSON, nullable=True)  # MySQL JSON
 
