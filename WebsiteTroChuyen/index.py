@@ -5,6 +5,8 @@ from flask_mail import Mail, Message as MailMessage
 from dao import *
 from datetime import datetime, timedelta, UTC
 import random, uuid, os
+from sqlalchemy import and_, or_, func
+import json
 
 
 from __init__ import app, socketio
@@ -156,178 +158,7 @@ def index():
         return redirect(url_for("chat"))
     return redirect(url_for("login"))
 
-# ----------------------------------------------------------------------------------------------------------------
 
-
-# @app.route("/api/user/me", methods=["GET"])
-# def api_user_me():
-#     if "user_id" not in session:
-#         return jsonify({"error": "not logged in"}), 401
-#
-#     user = db.session.get(User, session["user_id"])
-#
-#     if not user:
-#         return jsonify({"error": "user not found"}), 404
-#
-#     return jsonify({
-#         "user_id": user.user_id,
-#         "username": user.username,
-#         "phone": user.phone,
-#         "email": user.email,
-#         "avatar": user.avatar
-#     })
-#
-#
-#
-# @app.route("/api/search", methods=["GET"])
-# def api_search_user():
-#     q = request.args.get("q","")
-#     if not q:
-#         return jsonify([]), 200
-#     users = search_users_by_phone_like(q)
-#     data = [{"user_id":u.user_id, "phone":u.phone, "username":u.username, "avatar":u.avatar} for u in users]
-#     return jsonify(data)
-#
-# @app.route("/api/friends/request", methods=["POST"])
-# def api_send_friend_request():
-#     data = request.json
-#     from_user = data.get("from_user")
-#     to_user = data.get("to_user")
-#     if not from_user or not to_user:
-#         return jsonify({"error":"missing"}), 400
-#     fr, err = send_friend_request(from_user, to_user)
-#     if err:
-#         return jsonify({"error": err}), 400
-#     return jsonify({"message":"request sent", "friend_id": fr.friend_id})
-#
-# @app.route("/api/friends/respond", methods=["POST"])
-# def api_respond_friend():
-#     data = request.json
-#     friend_id = data.get("friend_id")
-#     action = data.get("action")  # accept/reject/block
-#     fr, err = respond_friend_request(friend_id, action)
-#     if err:
-#         return jsonify({"error": err}), 400
-#     return jsonify({"message":"done", "status": getattr(fr,"status",None)})
-
-#
-# @socketio.on("send_message")
-# def handle_send_message(data):
-#     conv = data["conversation_id"]
-#     sender = data["sender_id"]
-#     content = data["content"]
-#
-#     m = send_text_message(conv, sender, content)
-#
-#     socketio.emit("new_message", {
-#         "message_id": m.message_id,
-#         "conversation_id": conv,
-#         "sender_id": sender,
-#         "content": content,
-#         "sent_at": m.sent_at.isoformat()
-#     })
-
-# @app.route("/api/conversations/private", methods=["POST"])
-# def api_private_conv():
-#     data = request.json
-#     a = data.get("user_a")
-#     b = data.get("user_b")
-#     if not (a and b):
-#         return jsonify({"error":"missing"}), 400
-#     conv = get_or_create_private_conversation(a,b)
-#     return jsonify({"conversation_id": conv.conversation_id})
-#
-# @app.route("/api/conversations/group", methods=["POST"])
-# def api_create_group():
-#     data = request.json
-#     creator = data.get("creator")
-#     name = data.get("name")
-#     members = data.get("members", [])  # list of user_id
-#     # enforce: only allow invite members that are friends with creator (option)
-#     # filter members to only those who are friends OR skip check if you want
-#     allowed = []
-#     for m in members:
-#         if are_friends(creator, m):
-#             allowed.append(m)
-#     conv = create_group_conversation(creator, name, allowed)
-#     return jsonify({"conversation_id": conv.conversation_id})
-#
-# @app.route("/api/conversations/<int:cid>/invite", methods=["POST"])
-# def api_invite_to_group(cid):
-#     data = request.json
-#     inviter = data.get("inviter")
-#     invitee = data.get("invitee")
-#     # inviter must be participant and friends with invitee to add
-#     # check friendship:
-#     if not are_friends(inviter, invitee):
-#         return jsonify({"error":"must be friends to invite"}), 403
-#     p, err = add_participant(cid, invitee)
-#     if err=="already":
-#         return jsonify({"message":"already participant"})
-#     return jsonify({"message":"invited","participant_id": p.participant_id})
-#
-# @app.route("/api/messages/send", methods=["POST"])
-# def api_send_message():
-#     data = request.json
-#     conv = data.get("conversation_id")
-#     sender = data.get("sender_id")
-#     mtype = data.get("type","text")
-#     if mtype == "text":
-#         content = data.get("content","")
-#         m = send_text_message(conv, sender, content)
-#         return jsonify({"message_id": m.message_id, "sent_at": m.sent_at.isoformat()})
-#     elif mtype == "file":
-#         file_name = data.get("file_name")
-#         file_url = data.get("file_url")
-#         file_size = data.get("file_size",0)
-#         m = send_file_message(conv, sender, file_name, file_url, file_size)
-#         return jsonify({"message_id": m.message_id, "file_url": file_url})
-#
-# @app.route("/api/conversations/<int:cid>/messages", methods=["GET"])
-# def api_get_messages(cid):
-#     before = request.args.get("before_id")
-#     limit = int(request.args.get("limit",50))
-#     msgs = get_messages(cid, limit=limit, before_id=before)
-#     out = []
-#     for m in msgs:
-#         out.append({
-#             "message_id": m.message_id,
-#             "conversation_id": m.conversation_id,
-#             "sender_id": m.sender_id,
-#             "content": m.content,
-#             "type": m.type,
-#             "sent_at": m.sent_at.isoformat(),
-#             "files": [{"file_id":f.file_id, "file_url": f.file_url, "file_name": f.file_name} for f in m.files]
-#         })
-#     return jsonify(out)
-#
-# @app.route("/api/files/presign", methods=["GET"])
-# def api_presign():
-#     filename = request.args.get("filename")
-#     content_type = request.args.get("contentType","application/octet-stream")
-#     if not filename:
-#         return jsonify({"error":"filename required"}), 400
-#     res = generate_presigned_upload(filename, content_type, folder="uploads")
-#     return jsonify(res)
-#
-#
-# @app.route("/api/conversations", methods=["GET"])
-# def api_list_conversations():
-#     user_id = request.args.get("user_id")
-#     if not user_id:
-#         return jsonify([])
-#
-#     convs = get_user_conversations(user_id)
-#     return jsonify([
-#         {
-#             "conversation_id": c.conversation_id,
-#             "name": c.name,
-#             "type": c.type,
-#             "last_message": c.last_message.content if c.last_message else None,
-#             "updated_at": c.updated_at.isoformat()
-#         }
-#         for c in convs
-#     ])
 
 # Serch fiend
 @app.route("/api/search-users")
@@ -577,21 +408,25 @@ def send_message():
         stored_content = json.dumps(image_urls)
 
     # =====================
-    # FILE
+    # FILE                                                                   
     # =====================
     elif msg_type == "file" and files:
         file_infos = []
 
         for f in files[:3]:
+            # dùng tên + đuôi làm public_id
+            public_id = f.filename  # ví dụ: "Book1.xlsx"
+
             result = cloudinary.uploader.upload(
                 f,
-                resource_type="raw",  # ⭐ BẮT BUỘC CHO FILE
-                folder="chat_files"
+                resource_type="raw",
+                folder="chat_files",
+                public_id=public_id  # giữ luôn đuôi
             )
 
             file_infos.append({
                 "name": f.filename,
-                "url": result["secure_url"]
+                "url": result["secure_url"]  # giờ sẽ có đuôi
             })
 
         stored_content = json.dumps(file_infos)
@@ -626,7 +461,6 @@ def send_message():
 
 
 
-import json
 @app.route("/api/messages/<int:conversation_id>")
 def get_messages(conversation_id):
     msgs = (
@@ -651,7 +485,6 @@ def get_messages(conversation_id):
     ])
 
 
-from sqlalchemy import and_, or_, func
 
 @app.route("/api/conversations/private", methods=["POST"])
 def get_or_create_private_conversation():
