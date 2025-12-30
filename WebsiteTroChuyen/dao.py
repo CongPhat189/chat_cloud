@@ -182,14 +182,15 @@ def are_friends(user_a, user_b):
 #             q = q.filter(Message.sent_at < m.sent_at)
 #     return q.limit(limit).all()
 #
-# # ---- Files presign ----
-# def generate_presigned_upload(filename, content_type, folder="uploads"):
-#     key = f"{folder}/{uuid.uuid4().hex}_{filename}"
-#     url = s3_client.generate_presigned_url(
-#         ClientMethod='put_object',
-#         Params={'Bucket': AWS_S3_BUCKET, 'Key': key, 'ContentType': content_type},
-#         ExpiresIn=300
-#     )
-#     public_url = f"https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{key}"
-#     return {"upload_url": url, "key": key, "file_url": public_url}
-#
+
+# ---- Files presign ----
+def generate_presigned_upload(filename, content_type, folder="uploads"):
+    key = f"{folder}/{uuid.uuid4().hex}_{filename}"
+    url = s3_client.generate_presigned_url(
+        ClientMethod='put_object',
+        Params={'Bucket': AWS_S3_BUCKET, 'Key': key, 'ContentType': content_type},
+        ExpiresIn=300
+    )
+    public_url = f"https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{key}"
+    return {"upload_url": url, "key": key, "file_url": public_url}
+
