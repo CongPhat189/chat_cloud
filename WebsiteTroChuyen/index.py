@@ -298,27 +298,25 @@ def api_chat_list():
         return jsonify([])
 
     me = session["user_id"]
+    result = []
 
-    # 1️⃣ Lấy các quan hệ friend (pending + accepted)
+    # =========================
+    # CHAT RIÊNG (PRIVATE)
+    # =========================
     friends = Friend.query.filter(
         Friend.status.in_(["pending", "accepted"]),
         ((Friend.user_id1 == me) | (Friend.user_id2 == me))
     ).all()
 
-    result = []
-
     for f in friends:
-        # 2️⃣ Xác định user còn lại
         other_id = f.user_id2 if f.user_id1 == me else f.user_id1
         other_user = db.session.get(User, other_id)
-
         if not other_user:
             continue
 
-        # 3️⃣ Lấy conversation 1–1
         conv = (
             db.session.query(Conversation)
-            .join(Participant, Participant.conversation_id == Conversation.conversation_id)
+            .join(Participant)
             .filter(
                 Conversation.type == "private",
                 Participant.user_id.in_([me, other_id])
@@ -329,33 +327,79 @@ def api_chat_list():
         )
 
         last_msg = None
-
         if conv:
-            last_msg = Message.query.filter_by(
-                conversation_id=conv.conversation_id
-            ).order_by(Message.sent_at.desc()).first()
+            last_msg = (
+                Message.query
+                .filter_by(conversation_id=conv.conversation_id)
+                .order_by(Message.sent_at.desc())
+                .first()
+            )
 
         result.append({
+            "type": "private",
+            "conversation_id": conv.conversation_id if conv else None,
             "user_id": other_user.user_id,
             "username": other_user.username,
             "avatar": other_user.avatar,
-            "friend_status": f.status,
-
-            "last_message": (
-                "Hình ảnh" if last_msg and last_msg.type == "image"
-                else last_msg.content if last_msg
-                else ""
-            ),
-
+            "last_message": last_msg.content if last_msg else "",
             "last_message_type": last_msg.type if last_msg else None,
-
             "last_timestamp": last_msg.sent_at.timestamp() if last_msg else 0
         })
 
-    # 4️⃣ Sắp xếp theo tin nhắn mới nhất
+    # =========================
+    # CHAT NHÓM (GROUP)
+    # =========================
+    groups = (
+        Conversation.query
+        .join(Participant)
+        .filter(
+            Conversation.type == "group",
+            Participant.user_id == me
+        )
+        .all()
+    )
+
+    for g in groups:
+        last_msg = (
+            Message.query
+            .filter_by(conversation_id=g.conversation_id)
+            .order_by(Message.sent_at.desc())
+            .first()
+        )
+
+        members = (
+            Participant.query
+            .filter(
+                Participant.conversation_id == g.conversation_id,
+                Participant.user_id != me
+            )
+            .limit(3)
+            .all()
+        )
+
+        avatars = [
+            p.user.avatar for p in members
+            if p.user and p.user.avatar
+        ]
+
+        result.append({
+            "type": "group",
+            "conversation_id": g.conversation_id,
+            "username": g.name or "Nhóm chat",
+            "avatars": avatars,
+            "last_message": last_msg.content if last_msg else "",
+            "last_message_type": last_msg.type if last_msg else None,
+            "last_timestamp": last_msg.sent_at.timestamp() if last_msg else 0
+        })
+
+    # =========================
+    # SORT
+    # =========================
     result.sort(key=lambda x: x["last_timestamp"], reverse=True)
 
     return jsonify(result)
+
+
 
 # Lấy danh sách User trong cuộc trò chuyện
 @app.route("/api/get-user/<int:user_id>")
@@ -473,6 +517,8 @@ def get_messages(conversation_id):
     return jsonify([
         {
             "sender_id": m.sender_id,
+            "sender_avatar": m.sender.avatar,
+            "sender_name": m.sender.username,
             "type": m.type,
             "content": (
                 json.loads(m.content)
@@ -483,7 +529,6 @@ def get_messages(conversation_id):
         }
         for m in msgs
     ])
-
 
 
 @app.route("/api/conversations/private", methods=["POST"])
@@ -529,6 +574,130 @@ def get_or_create_private_conversation():
     })
 
 
+@app.route("/api/create-group", methods=["POST"])
+def create_group():
+    if "user_id" not in session:
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.json
+    group_name = data.get("name")
+    members = data.get("members", [])
+
+    # ❌ validate
+    if not group_name:
+        return jsonify({"error": "missing group name"}), 400
+
+    if not isinstance(members, list) or len(members) < 3:
+        return jsonify({"error": "group must have at least 3 members"}), 400
+
+    me_id = session["user_id"]
+
+    # ✅ tạo conversation
+    conv = Conversation(
+        type="group",
+        name=group_name,
+        created_at=datetime.utcnow()
+    )
+    db.session.add(conv)
+    db.session.commit()  # để có conversation_id
+
+    # ✅ thêm chính mình (admin)
+    me_participant = Participant(
+        conversation_id=conv.conversation_id,
+        user_id=me_id,
+        role="admin"
+    )
+    db.session.add(me_participant)
+
+    # ✅ thêm các thành viên
+    for uid in set(members):
+        if uid == me_id:
+            continue
+
+        participant = Participant(
+            conversation_id=conv.conversation_id,
+            user_id=uid,
+            role="member"
+        )
+        db.session.add(participant)
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "conversation_id": conv.conversation_id
+    })
+
+@app.route("/api/conversation-info/<int:conversation_id>")
+def conversation_info(conversation_id):
+    conv = Conversation.query.get_or_404(conversation_id)
+
+    # Lấy user đang login từ session
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "unauthorized"}), 401
+
+    # ===== XÁC ĐỊNH TÊN + AVATAR =====
+    if conv.type == "group":
+        name = conv.name or "---"
+        avatar = getattr(conv, "avatar_url", "/static/default-avatar.png")
+    else:  # private chat
+        other_participant = (
+            Participant.query
+            .filter_by(conversation_id=conversation_id)
+            .filter(Participant.user_id != user_id)
+            .first()
+        )
+        if other_participant:
+            name = other_participant.user.username
+            avatar = other_participant.user.avatar or "/static/default-avatar.png"
+        else:
+            name = "---"
+            avatar = "/static/default-avatar.png"
+
+    # ===== LẤY TIN NHẮN =====
+    msgs = (
+        Message.query
+        .filter_by(conversation_id=conversation_id)
+        .order_by(Message.sent_at.desc())
+        .all()
+    )
+
+    media_list = []
+    file_list = []
+    text_list = []
+
+    for m in msgs:
+        try:
+            content = json.loads(m.content)
+        except:
+            content = m.content
+
+        if m.type == "image":
+            media_list.extend(content if isinstance(content, list) else [content])
+        elif m.type == "file":
+            file_list.extend(content if isinstance(content, list) else [content])
+        elif m.type == "text":
+            text_list.append({
+                "sender_id": m.sender_id,
+                "content": m.content,
+                "sent_at": m.sent_at.isoformat()
+            })
+
+    return jsonify({
+        "conversation_id": conv.conversation_id,
+        "type": conv.type,
+        "name": name,
+        "avatar": avatar,
+        "media": media_list,
+        "files": [
+            {
+                "name": f.get("name", f if isinstance(f, str) else f.get("url", "").split("/")[-1]),
+                "url": f.get("url", f) if isinstance(f, dict) else f
+            } for f in file_list
+        ],
+        "text_messages": text_list
+    })
 
 
 

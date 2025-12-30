@@ -48,9 +48,10 @@
                     <span class="clear-search"></span>
                 </div>
 
-                <div class="add-user">
-                    <img src="https://cdn-icons-png.flaticon.com/128/17847/17847652.png" alt="">
+                <div class="add-user" id="openGroupModal">
+                    <img src="https://cdn-icons-png.flaticon.com/128/6829/6829940.png" alt="Tạo nhóm">
                 </div>
+
             </div>
             <div class="line" style="width: 100%;height: 1px; background-color: #ddd;margin: 12px 0;"></div>
 
@@ -61,6 +62,56 @@
 
         </div>
     </div>
+
+
+    <div id="groupModal" class="modal">
+        <div class="modal-content">
+            <!-- HEADER -->
+            <div class="modal-header">
+                <div class="modal-header-top">
+                    <div style="border-bottom:1px solid #ddd; padding:10px 20px;">
+                        <span class="modal-title">Tạo nhóm</span>
+                    </div>
+                </div>
+
+                <div class="modal-header-main">
+                    <div class="group-icon">
+                        <img src="https://cdn-icons-png.flaticon.com/128/7714/7714228.png" alt="icon">
+                    </div>
+                    <input type="text" placeholder="Nhập tên nhóm..." class="group-name">
+                </div>
+
+                <div class="group-search-wrapper">
+                    <input
+                            type="text"
+                            placeholder="Nhập tên, số điện thoại..."
+                            class="add-group-search"
+                            id="groupSearchInput"
+                            autocomplete="off">
+
+                    <div class="group-search-dropdown" id="groupSearchDropdown">
+                        <!-- JS render -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- BODY -->
+            <div class="modal-body">
+                <div class="recent-chat-title">Trò chuyện gần đây</div>
+                <div class="group-users" id="groupRecentChats">
+                    <!-- JS render -->
+                </div>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="modal-footer">
+                <button id="cancelGroup">Hủy</button>
+                <button id="createGroup" class="create-btn">Tạo nhóm</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- BÊN PHẢI 7/7 -->
     <div class="chat-right">
@@ -77,7 +128,41 @@
             <div class="chat-header-actions">
                 <i class="fa-solid fa-phone"></i>
                 <i class="fa-solid fa-video"></i>
-                <i class="fa-solid fa-ellipsis"></i>
+
+                <i class="fa-solid fa-ellipsis chat-more-btn"></i>
+
+                <!-- MODAL -->
+                <div class="chat-info-modal" id="chatInfoModal">
+                    <div class="chat-info-overlay"></div>
+
+                    <div class="chat-info-box">
+                        <!-- PHẦN 1 -->
+                        <div class="chat-info-section center">
+                            <div class="chat-info-title">Thông tin đoạn chat</div>
+                        </div>
+
+                        <!-- PHẦN 2 -->
+                        <div class="chat-info-section">
+                            <div class="section-content" id="chatInfoName">
+                                <img id="chatInfoAvatar" src="/static/default-avatar.png" alt="avatar" class="chat-avatar-history">
+                                <span id="chatInfoText">---</span>
+                            </div>
+                        </div>
+
+                        <!-- PHẦN 3 -->
+                        <div class="chat-info-section scroll">
+                            <div class="section-title">Ảnh / Video</div>
+                            <div class="media-grid" id="chatMediaBox"></div>
+                        </div>
+
+                        <!-- PHẦN 4 -->
+                        <div class="chat-info-section scroll">
+                            <div class="section-title">File</div>
+                            <div class="file-list" id="chatFileBox"></div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 
