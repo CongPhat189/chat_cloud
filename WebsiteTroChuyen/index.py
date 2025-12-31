@@ -587,7 +587,7 @@ def create_group():
     if not group_name:
         return jsonify({"error": "missing group name"}), 400
 
-    if not isinstance(members, list) or len(members) < 3:
+    if not isinstance(members, list) or len(members) < 2:
         return jsonify({"error": "group must have at least 3 members"}), 400
 
     me_id = session["user_id"]

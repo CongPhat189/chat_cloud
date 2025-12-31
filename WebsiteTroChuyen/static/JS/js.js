@@ -980,8 +980,8 @@ document.getElementById("createGroup").addEventListener("click", () => {
     return;
   }
 
-  // ❌ phải >= 3 người (không tính mình)
-  if (checkedUsers.length < 3) {
+  // ❌ phải >= 2 người (không tính mình)
+  if (checkedUsers.length < 2) {
     alert("Nhóm phải có ít nhất 3 người");
     return;
   }
